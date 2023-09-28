@@ -1,4 +1,4 @@
-use advent_of_code::helpers::{Point, PointDirection, PointGrid};
+use advent_of_code::algebra_helpers::{Point2, PointGrid};
 use parse_display::{Display, FromStr};
 
 #[derive(Display, FromStr, PartialEq, Debug)]
@@ -11,16 +11,13 @@ pub enum Space {
     Occupied,
 }
 
-pub fn create_grid(input: &str) -> PointGrid<Space> {
+pub fn create_grid(input: &str) -> PointGrid<isize, 2, Space> {
     let mut grid = PointGrid::default();
 
     for (y, row) in input.lines().enumerate() {
         for (x, character) in row.chars().enumerate() {
             grid.insert(
-                Point {
-                    x: x as isize,
-                    y: y as isize,
-                },
+                Point2::new(x as isize, y as isize),
                 character.to_string().parse().unwrap(),
             )
         }
@@ -30,34 +27,31 @@ pub fn create_grid(input: &str) -> PointGrid<Space> {
 }
 
 pub fn step_gol(
-    input: &PointGrid<Space>,
-    next_state_function: &dyn Fn(&Point<isize>, &PointGrid<Space>) -> Space,
-) -> (PointGrid<Space>, bool) {
+    input: &PointGrid<isize, 2, Space>,
+    next_state_function: &dyn Fn(&Point2<isize>, &PointGrid<isize, 2, Space>) -> Space,
+) -> (PointGrid<isize, 2, Space>, bool) {
     let mut new_grid = PointGrid::default();
-    let (min_dimensions, max_dimensions) = input.dimensions();
     let mut changed = false;
-    for y in min_dimensions.y..=max_dimensions.y {
-        for x in min_dimensions.x..=max_dimensions.x {
-            let pos = Point { x, y };
-            let new_value = next_state_function(&pos, input);
+    for pos in input.iter_full_bounds() {
+        let new_value = next_state_function(&pos, input);
 
-            if *input.get(&pos).unwrap() != new_value {
-                changed = true;
-            }
-
-            new_grid.insert(pos, new_value);
+        if *input.get(&pos).unwrap() != new_value {
+            changed = true;
         }
+
+        new_grid.insert(pos, new_value);
     }
 
     (new_grid, changed)
 }
 
-pub fn get_next_state_part1(pos: &Point<isize>, grid: &PointGrid<Space>) -> Space {
+pub fn get_next_state_part1(pos: &Point2<isize>, grid: &PointGrid<isize, 2, Space>) -> Space {
     match grid.get(pos) {
         Some(Space::Floor) => Space::Floor,
         Some(Space::Empty) => {
-            if PointDirection::all_with_diagonals()
-                .filter_map(|d| grid.get(&pos.get_point_in_direction(d, 1)))
+            if Point2::<isize>::directions_with_diagonals()
+                .iter()
+                .filter_map(|d| grid.get(&(*pos + *d)))
                 .all(|s| *s == Space::Empty || *s == Space::Floor)
             {
                 Space::Occupied
@@ -66,8 +60,9 @@ pub fn get_next_state_part1(pos: &Point<isize>, grid: &PointGrid<Space>) -> Spac
             }
         }
         Some(Space::Occupied) => {
-            if PointDirection::all_with_diagonals()
-                .filter_map(|d| grid.get(&pos.get_point_in_direction(d, 1)))
+            if Point2::<isize>::directions_with_diagonals()
+                .iter()
+                .filter_map(|d| grid.get(&(*pos + *d)))
                 .filter(|s| **s == Space::Occupied)
                 .count()
                 >= 4
@@ -81,14 +76,14 @@ pub fn get_next_state_part1(pos: &Point<isize>, grid: &PointGrid<Space>) -> Spac
     }
 }
 
-pub fn get_next_state_part2(pos: &Point<isize>, grid: &PointGrid<Space>) -> Space {
+pub fn get_next_state_part2(pos: &Point2<isize>, grid: &PointGrid<isize, 2, Space>) -> Space {
     match grid.get(pos) {
         Some(Space::Floor) => Space::Floor,
         Some(Space::Empty) => {
-            for d in PointDirection::all_with_diagonals() {
+            for d in Point2::<isize>::directions_with_diagonals().iter() {
                 let mut distance = 1;
                 loop {
-                    let s = grid.get(&pos.get_point_in_direction(d, distance));
+                    let s = grid.get(&(*pos + *d * distance));
                     match s {
                         Some(Space::Floor) => {
                             distance += 1;
@@ -110,10 +105,10 @@ pub fn get_next_state_part2(pos: &Point<isize>, grid: &PointGrid<Space>) -> Spac
         }
         Some(Space::Occupied) => {
             let mut occupied_seats = 0;
-            for d in PointDirection::all_with_diagonals() {
+            for d in Point2::<isize>::directions_with_diagonals().iter() {
                 let mut distance = 1;
                 loop {
-                    let s = grid.get(&pos.get_point_in_direction(d, distance));
+                    let s = grid.get(&(*pos + *d * distance));
                     match s {
                         Some(Space::Floor) => {
                             distance += 1;
@@ -152,7 +147,7 @@ pub fn part_one(input: &str) -> Option<u32> {
     }
 
     Some(
-        grid.points
+        grid.0
             .iter()
             .filter(|(_, v)| **v == Space::Occupied)
             .count() as u32,
@@ -168,7 +163,7 @@ pub fn part_two(input: &str) -> Option<u32> {
     }
 
     Some(
-        grid.points
+        grid.0
             .iter()
             .filter(|(_, v)| **v == Space::Occupied)
             .count() as u32,

@@ -2,21 +2,18 @@ use itertools::Itertools;
 use num_traits::Num;
 use std::collections::HashMap;
 use std::ops::{self, Index, IndexMut};
+use std::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
 use std::{array, fmt};
-use std::{
-    fmt::Debug,
-    ops::{AddAssign, DivAssign, MulAssign, SubAssign},
-};
 
 // Taken and adapted from MIT-licensed code library lina: https://github.com/LukasKalbertodt/lina
 
 pub trait Scalar:
-    Num + Clone + Copy + Debug + AddAssign + SubAssign + MulAssign + DivAssign
+    Num + Clone + Copy + fmt::Debug + AddAssign + SubAssign + MulAssign + DivAssign
 {
 }
 
 impl<T> Scalar for T where
-    T: Num + Clone + Copy + Debug + AddAssign + SubAssign + MulAssign + DivAssign
+    T: Num + Clone + Copy + fmt::Debug + AddAssign + SubAssign + MulAssign + DivAssign
 {
 }
 
@@ -174,6 +171,20 @@ impl<T: Scalar, const N: usize> fmt::Debug for Point<T, N> {
     }
 }
 
+impl<T: Scalar, const N: usize> fmt::Display for Point<T, N> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Point")?;
+        write!(f, "[")?;
+        for (i, e) in self.0.into_iter().enumerate() {
+            if i != 0 {
+                write!(f, ", ")?;
+            }
+            e.fmt(f)?;
+        }
+        write!(f, "]")
+    }
+}
+
 impl<T: Scalar, const N: usize> ops::Add<Point<T, N>> for Point<T, N> {
     type Output = Self;
     fn add(self, rhs: Point<T, N>) -> Self::Output {
@@ -201,6 +212,13 @@ impl<T: Scalar, const N: usize> ops::Sub<Self> for Point<T, N> {
     type Output = Point<T, N>;
     fn sub(self, rhs: Self) -> Self::Output {
         array::from_fn(|i| self[i] - rhs[i]).into()
+    }
+}
+
+impl<T: Scalar, const N: usize> ops::Mul<T> for Point<T, N> {
+    type Output = Point<T, N>;
+    fn mul(self, rhs: T) -> Self::Output {
+        array::from_fn(|i| self[i] * rhs).into()
     }
 }
 
@@ -234,6 +252,13 @@ impl<T: Scalar, const N: usize, U> Default for PointGrid<T, N, U> {
     }
 }
 
+impl<T: Scalar + Ord, const N: usize, U> PointGrid<T, N, U> {
+    pub fn iter_full_bounds(&self) -> PointGridIterator<T, N> {
+        let (min, max) = self.dimensions();
+        PointGridIterator::new(min, max + Point::filled(T::one()))
+    }
+}
+
 impl<T: Scalar + std::hash::Hash + Eq, const N: usize, U> PointGrid<T, N, U> {
     pub fn insert(&mut self, p: Point<T, N>, value: U) {
         self.0.insert(p, value);
@@ -264,6 +289,72 @@ impl<T: Scalar + Ord, const N: usize, U> PointGrid<T, N, U> {
                     .unwrap(),
             },
         )
+    }
+}
+
+impl<T: Scalar + Ord + std::iter::Step + std::hash::Hash, U: fmt::Display> fmt::Display
+    for PointGrid<T, 2, U>
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let (min, max) = self.dimensions();
+        writeln!(f, "Grid ({}, {}):", min, max)?;
+        for y in min.0[1]..(max.0[1] + T::one()) {
+            for x in min.0[0]..(max.0[0] + T::one()) {
+                if let Some(u) = self.get(&Point2::new(x, y)) {
+                    write!(f, "{}", u)?;
+                } else {
+                    write!(f, " ")?;
+                }
+            }
+            writeln!(f)?;
+        }
+        write!(f, "")
+    }
+}
+
+impl<T: Scalar + Ord + std::iter::Step + std::hash::Hash, U: fmt::Display> fmt::Display
+    for PointGrid<T, 3, U>
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let (min, max) = self.dimensions();
+        writeln!(f, "Grid ({}, {}):", min, max)?;
+        for z in min.0[2]..(max.0[2] + T::one()) {
+            for y in min.0[1]..(max.0[1] + T::one()) {
+                for x in min.0[0]..(max.0[0] + T::one()) {
+                    if let Some(u) = self.get(&Point3::new(x, y, z)) {
+                        write!(f, "{}", u)?;
+                    } else {
+                        write!(f, " ")?;
+                    }
+                }
+                writeln!(f)?;
+            }
+        }
+        write!(f, "")
+    }
+}
+
+impl<T: Scalar + Ord + std::iter::Step + std::hash::Hash, U: fmt::Display> fmt::Display
+    for PointGrid<T, 4, U>
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let (min, max) = self.dimensions();
+        writeln!(f, "Grid ({}, {}):", min, max)?;
+        for w in min.0[3]..(max.0[3] + T::one()) {
+            for z in min.0[2]..(max.0[2] + T::one()) {
+                for y in min.0[1]..(max.0[1] + T::one()) {
+                    for x in min.0[0]..(max.0[0] + T::one()) {
+                        if let Some(u) = self.get(&Point4::new(x, y, z, w)) {
+                            write!(f, "{}", u)?;
+                        } else {
+                            write!(f, " ")?;
+                        }
+                    }
+                    writeln!(f)?;
+                }
+            }
+        }
+        write!(f, "")
     }
 }
 
