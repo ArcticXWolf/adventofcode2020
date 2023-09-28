@@ -6,6 +6,7 @@
 use std::env;
 use std::fs;
 
+pub mod algebra_helpers;
 pub mod helpers;
 
 pub const ANSI_ITALIC: &str = "\x1b[3m";
