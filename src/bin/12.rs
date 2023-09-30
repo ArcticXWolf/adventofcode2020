@@ -1,4 +1,4 @@
-use advent_of_code::helpers::{Point, PointDirection};
+use advent_of_code::algebra_helpers::{Point2, Point2Direction};
 use itertools::Itertools;
 use parse_display::{Display, FromStr};
 
@@ -22,17 +22,17 @@ enum NavInstruction {
 
 #[derive(Debug)]
 struct Ferry {
-    waypoint: Point<isize>,
-    position: Point<isize>,
-    facing_direction: PointDirection,
+    waypoint: Point2<isize>,
+    position: Point2<isize>,
+    facing_direction: Point2Direction,
 }
 
 impl Ferry {
     pub fn new() -> Self {
         Self {
-            waypoint: Point { x: 10, y: -1 },
-            position: Point { x: 0, y: 0 },
-            facing_direction: PointDirection::East,
+            waypoint: Point2::new(10, -1),
+            position: Point2::new(0, 0),
+            facing_direction: Point2Direction::East,
         }
     }
 
@@ -41,22 +41,22 @@ impl Ferry {
             NavInstruction::North(d) => {
                 self.position = self
                     .position
-                    .get_point_in_direction(&PointDirection::North, *d as isize);
+                    .get_point_in_direction(&Point2Direction::North, *d as isize);
             }
             NavInstruction::East(d) => {
                 self.position = self
                     .position
-                    .get_point_in_direction(&PointDirection::East, *d as isize);
+                    .get_point_in_direction(&Point2Direction::East, *d as isize);
             }
             NavInstruction::South(d) => {
                 self.position = self
                     .position
-                    .get_point_in_direction(&PointDirection::South, *d as isize);
+                    .get_point_in_direction(&Point2Direction::South, *d as isize);
             }
             NavInstruction::West(d) => {
                 self.position = self
                     .position
-                    .get_point_in_direction(&PointDirection::West, *d as isize);
+                    .get_point_in_direction(&Point2Direction::West, *d as isize);
             }
             NavInstruction::Left(d) => {
                 self.facing_direction = match d % 360 {
@@ -103,22 +103,22 @@ impl Ferry {
             NavInstruction::North(d) => {
                 self.waypoint = self
                     .waypoint
-                    .get_point_in_direction(&PointDirection::North, *d as isize);
+                    .get_point_in_direction(&Point2Direction::North, *d as isize);
             }
             NavInstruction::East(d) => {
                 self.waypoint = self
                     .waypoint
-                    .get_point_in_direction(&PointDirection::East, *d as isize);
+                    .get_point_in_direction(&Point2Direction::East, *d as isize);
             }
             NavInstruction::South(d) => {
                 self.waypoint = self
                     .waypoint
-                    .get_point_in_direction(&PointDirection::South, *d as isize);
+                    .get_point_in_direction(&Point2Direction::South, *d as isize);
             }
             NavInstruction::West(d) => {
                 self.waypoint = self
                     .waypoint
-                    .get_point_in_direction(&PointDirection::West, *d as isize);
+                    .get_point_in_direction(&Point2Direction::West, *d as isize);
             }
             NavInstruction::Left(d) => {
                 self.waypoint = match d % 360 {
@@ -153,18 +153,12 @@ impl Ferry {
     }
 }
 
-pub fn spin_pos_right(pos: &Point<isize>) -> Point<isize> {
-    Point {
-        x: -pos.y,
-        y: pos.x,
-    }
+pub fn spin_pos_right(pos: &Point2<isize>) -> Point2<isize> {
+    Point2::new(-pos.0[1], pos.0[0])
 }
 
-pub fn spin_pos_left(pos: &Point<isize>) -> Point<isize> {
-    Point {
-        x: pos.y,
-        y: -pos.x,
-    }
+pub fn spin_pos_left(pos: &Point2<isize>) -> Point2<isize> {
+    Point2::new(pos.0[1], -pos.0[0])
 }
 
 pub fn part_one(input: &str) -> Option<u32> {
@@ -178,7 +172,7 @@ pub fn part_one(input: &str) -> Option<u32> {
         ferry.adjust_by_instruction_part1(&i);
     }
 
-    Some(ferry.position.manhattan_distance(&Point { x: 0, y: 0 }) as u32)
+    Some(ferry.position.length_manhattan() as u32)
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
@@ -192,7 +186,7 @@ pub fn part_two(input: &str) -> Option<u32> {
         ferry.adjust_by_instruction_part2(&i);
     }
 
-    Some(ferry.position.manhattan_distance(&Point { x: 0, y: 0 }) as u32)
+    Some(ferry.position.length_manhattan() as u32)
 }
 
 fn main() {

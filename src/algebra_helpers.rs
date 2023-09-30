@@ -3,6 +3,7 @@ use num_traits::Num;
 use std::collections::HashMap;
 use std::ops::{self, Index, IndexMut};
 use std::ops::{AddAssign, DivAssign, MulAssign, SubAssign};
+use std::slice::Iter;
 use std::{array, fmt};
 
 // Taken and adapted from MIT-licensed code library lina: https://github.com/LukasKalbertodt/lina
@@ -22,13 +23,86 @@ pub trait Float: Scalar + num_traits::Float + num_traits::FloatConst {}
 impl<T> Float for T where T: Scalar + num_traits::Float + num_traits::FloatConst {}
 
 #[repr(transparent)]
-pub struct Point<T: Scalar, const N: usize>(pub(crate) [T; N]);
+pub struct Point<T: Scalar, const N: usize>(pub [T; N]);
 
 pub type Point2<T> = Point<T, 2>;
 
 impl<T: Scalar> Point<T, 2> {
     pub fn new(x: T, y: T) -> Self {
         Self([x, y])
+    }
+
+    pub fn get_point_in_direction(&self, direction: &Point2Direction, distance: T) -> Self {
+        match direction {
+            Point2Direction::North => Self::new(self.0[0], self.0[1] - distance),
+            Point2Direction::NorthEast => Self::new(self.0[0] + distance, self.0[1] - distance),
+            Point2Direction::East => Self::new(self.0[0] + distance, self.0[1]),
+            Point2Direction::SouthEast => Self::new(self.0[0] + distance, self.0[1] + distance),
+            Point2Direction::South => Self::new(self.0[0], self.0[1] + distance),
+            Point2Direction::SouthWest => Self::new(self.0[0] - distance, self.0[1] + distance),
+            Point2Direction::West => Self::new(self.0[0] - distance, self.0[1]),
+            Point2Direction::NorthWest => Self::new(self.0[0] - distance, self.0[1] - distance),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Point2Direction {
+    North,
+    NorthEast,
+    East,
+    SouthEast,
+    South,
+    SouthWest,
+    West,
+    NorthWest,
+}
+
+impl Point2Direction {
+    pub fn all_with_diagonals() -> Iter<'static, Self> {
+        static D: [Point2Direction; 8] = [
+            Point2Direction::North,
+            Point2Direction::NorthEast,
+            Point2Direction::East,
+            Point2Direction::SouthEast,
+            Point2Direction::South,
+            Point2Direction::SouthWest,
+            Point2Direction::West,
+            Point2Direction::NorthWest,
+        ];
+
+        D.iter()
+    }
+
+    pub fn all() -> Iter<'static, Self> {
+        static D: [Point2Direction; 4] = [
+            Point2Direction::North,
+            Point2Direction::East,
+            Point2Direction::South,
+            Point2Direction::West,
+        ];
+
+        D.iter()
+    }
+
+    pub fn direction_left(&self) -> Self {
+        match self {
+            Self::North => Self::West,
+            Self::East => Self::North,
+            Self::South => Self::East,
+            Self::West => Self::South,
+            _ => unimplemented!(),
+        }
+    }
+
+    pub fn direction_right(&self) -> Self {
+        match self {
+            Self::North => Self::East,
+            Self::East => Self::South,
+            Self::South => Self::West,
+            Self::West => Self::North,
+            _ => unimplemented!(),
+        }
     }
 }
 
@@ -102,29 +176,37 @@ impl<T: Scalar, const N: usize> Point<T, N> {
         current_vectors
     }
 
-    pub fn distance2_from(self, other: Self) -> T {
-        (self - other).length2()
+    pub fn distance_euclid_squared_from(self, other: Self) -> T {
+        (self - other).length_euclid_squared()
     }
 
-    pub fn distance_from(self, other: Self) -> T
+    pub fn distance_euclid_from(self, other: Self) -> T
     where
         T: Float,
     {
-        (self - other).length()
+        (self - other).length_euclid()
     }
 
-    pub fn length2(&self) -> T {
+    pub fn distance_manhattan_from(self, other: Self) -> T {
+        (self - other).length_manhattan()
+    }
+
+    pub fn length_euclid_squared(&self) -> T {
         self.0
             .iter()
             .map(|&c| c * c)
             .fold(T::zero(), |acc, e| acc + e)
     }
 
-    pub fn length(&self) -> T
+    pub fn length_euclid(&self) -> T
     where
         T: Float,
     {
-        self.length2().sqrt()
+        self.length_euclid_squared().sqrt()
+    }
+
+    pub fn length_manhattan(&self) -> T {
+        self.0.iter().fold(T::zero(), |acc, e| acc + *e)
     }
 
     pub fn vec_to(self, other: Self) -> Point<T, N> {
